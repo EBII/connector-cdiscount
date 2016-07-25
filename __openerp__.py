@@ -1,4 +1,3 @@
- # -*- coding: utf-8 -*-
 {
     'name': 'Cdiscount Marketplace Connector',
     'version': '8.0.1.0',
@@ -14,7 +13,10 @@
            Features:
                     WORK in Progress
                     """,
-    'data': [],
+    'data': [   'views/connector_cdiscount_view.xml',
+                'views/connector_cdiscount_menu.xml',
+             ],
     'installable': True,
     'application': True,
 }
+ # -*- coding: utf-8 -*-
