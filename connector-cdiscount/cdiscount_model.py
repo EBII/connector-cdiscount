@@ -1,7 +1,7 @@
 from openerp import fields, models, api
 
 
-class cdiscountBackend(models.Model):
+class CcdiscountBackend(models.Model):
     _name = 'cdiscount.backend'
     _description = 'cdiscount Backend'
     _inherit = 'connector.backend'
