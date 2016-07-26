@@ -3,7 +3,7 @@
     'version': '8.0.1.0',
     'category': 'Connector',
     'depends': ['connector',],
-    'author': 'Eric Bouhana',
+    'author': 'Akretion, Eric Bouhana, Sebastien Beau',
     'license': 'AGPL-3',
     'description': """
            Connector pour la marketplace de Cdiscount
