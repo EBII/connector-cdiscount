@@ -28,3 +28,27 @@ class CcdiscountBackend(models.Model):
         comodel_name='res.lang',
         string='Default Language',
     )
+
+    @api.multi
+    def import_sale_orders(self):
+        session = ConnectorSession(self.env.cr, self.env.uid,
+            context=self.env.context)
+        for backend in self:
+            sale_order_import_batch.delay(
+                session,
+                'cdiscount.sale.order',
+                backend.id,
+                priority=1)  # executed as soon as possible
+        return True
+
+    @api.model
+    def _cdiscount_backend(self, callback, domain=None):
+        if domain is None:
+            domain = []
+        backends = self.search(domain)
+        if backends:
+            getattr(backends, callback)()
+
+    @api.model
+    def _scheduler_import_sale_orders(self, domain=None):
+        self._cdiscount_backend('import_sale_orders', domain=domain)
