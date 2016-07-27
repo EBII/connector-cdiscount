@@ -12,11 +12,11 @@
 
            Features:
                     WORK in Progress
-                    """,
+           """ ,
+   # 'depends': ['connector','connector-ecommerce'],
     'data': [   'views/connector_cdiscount_view.xml',
                 'views/connector_cdiscount_menu.xml',
              ],
     'installable': True,
     'application': True,
 }
- # -*- coding: utf-8 -*-

@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 from .backend import cdiscount
 from openerp.addons.connector.connector.queue.job import job
 from openerp.addons.connector.connector.unit.backend_adapter import CRUDAdapter
