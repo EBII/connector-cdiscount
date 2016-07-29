@@ -13,7 +13,7 @@
            Features:
                     WORK in Progress
            """ ,
-   # 'depends': ['connector','connector-ecommerce'],
+    'depends': ['connector'],
     'data': [   'views/connector_cdiscount_view.xml',
                 'views/connector_cdiscount_menu.xml',
              ],
