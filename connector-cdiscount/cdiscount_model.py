@@ -1,7 +1,8 @@
 # -*- coding: utf-8 -*-
 from openerp import fields, models, api
-from openerp.addons.connector.session import ConnectorSession
 from .sale import SaleOrderBatchImport
+from .sale import sale_order_import_batch
+from openerp.addons.connector.session import ConnectorSession
 
 
 class CcdiscountBackend(models.Model):
@@ -34,11 +35,10 @@ class CcdiscountBackend(models.Model):
 
     @api.multi
     def import_sale_orders(self):
-        session = ConnectorSession(self.env.cr, self.env.uid,
-            context=self.env.context)
+        session = ConnectorSession.from_env(self.env)
         for backend in self:
-            SaleOrderBatchImport.delay(
-              #  session,
+            sale_order_import_batch.delay(
+                session,
                 'cdiscount.sale.order',
                 backend.id,
                 priority=1)  # executed as soon as possible

@@ -17,6 +17,7 @@
     'data': [   'views/connector_cdiscount_view.xml',
                 'views/connector_cdiscount_menu.xml',
              ],
+    #'demo': ['demo/cdiscount.backend.csv'],
     'installable': True,
     'application': True,
 }

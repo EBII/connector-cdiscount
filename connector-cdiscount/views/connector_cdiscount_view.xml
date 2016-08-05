@@ -17,7 +17,7 @@
                         <field name="location" placeholder="e.g. http://my.cdiscount.com"
                             colspan="2"/>
                         <field name="username" colspan="2"/>
-                        <field name="password" colspan="2"/>
+                        <field name="password" colspan="2" password="True"/>
                     </group>
                 </group>
                 <!--<group name="index" string="Index">-->
