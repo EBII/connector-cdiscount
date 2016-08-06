@@ -3,6 +3,8 @@
 import os
 from .backend import cdiscount
 from openerp.addons.connector.queue.job import job
+from .orderhash import HASH as listHash
+import json
 from openerp.addons.connector.unit.backend_adapter import CRUDAdapter
 from .connector import get_environment
 from openerp.addons.connector.unit.synchronizer import (Importer)
@@ -40,7 +42,11 @@ class CdiscountAdapter(CRUDAdapter):
     _model_name = ['cdiscount.sale.order']
 
     def search_read(self, filters=None):
-        return [{'order': 'num1','OrderNumber':'ON1'},{'order':'num2','OrderNumber':'ON2'}]
+        #goodHash = listHash.replace("'", "\"")
+        #orders = json.loads(goodHash)
+        print "caca: "+str(len(listHash))
+        return listHash
+        #return [{'order': 'num1','OrderNumber':'ON1'},{'order':'num2','OrderNumber':'ON2'}]
 
 @job
 def import_record_sale_order(session, att_id,record):
@@ -65,8 +71,8 @@ class SaleOrderBatchImport(Importer):
 
     def _import_record(self, record, **kwargs):
         """ Import the record directly """
-        print record
-        file_name = _getFilenameForSaleOrderJob(record['OrderNumber'])
+        print "toto "+ str(record)
+        file_name = _getFilenameForSaleOrderJob(record.get('OrderNumber'))
         session = ConnectorSession.from_env(self.env)
          # create a CSV attachment and enqueue the job
         root, ext = os.path.splitext(file_name)
@@ -88,7 +94,8 @@ class SaleOrderBatchImport(Importer):
         records = self.backend_adapter.search_read(filters)
         _logger.info('search ...')
         for record in records:
-            self._import_record(record)
+                print "je print chaque record : " + str(record)
+                self._import_record(record)
 
 
 
@@ -99,8 +106,8 @@ def _create_csv_attachment(session, h_data, file_name):
                         delimiter=str(OPTIONS['OPT_SEPARATOR']),
                         quotechar=str(OPTIONS['OPT_QUOTING']))
     encoding = (OPTIONS['OPT_ENCODING'])
-    writer.writerow(_encode(h_data.keys(), encoding))
-    writer.writerow(_encode(h_data.values(), encoding))
+   # writer.writerow(_encode(h_data.keys(), encoding))
+    writer.writerow(_encode(h_data, encoding))
     # create attachment
     attachment = session.env['ir.attachment'].create({
         'name': file_name,
@@ -108,6 +115,17 @@ def _create_csv_attachment(session, h_data, file_name):
     })
     return attachment.id
 
+import collections
+def getStructure(data):
+    texte =""
+    for key, item in data.items():
+        if isinstance(item, collections.Iterable):
+            texte += key +": "
+            getStructure(item)
+        else:
+            texte += item
+
+        return texte
 
 def _encode(row, encoding):
     return [cell.encode(encoding) for cell in row]

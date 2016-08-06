@@ -1,0 +1,14 @@
+<openerp>
+    <data>
+        <record id="cdiscount_backend_1" model="cdiscount.backend">
+            <field name="password">AZERTY</field>
+            <field name="username">MonsieurB</field>
+            <field name="name">Cdiscount</field>
+            <field name="location">https://www.cdiscount.com</field>
+            <field name="version">01/08/2016</field>
+
+        </record>
+
+    </data>
+
+</openerp>
