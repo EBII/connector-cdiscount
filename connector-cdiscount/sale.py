@@ -15,9 +15,9 @@ import logging
 from cStringIO import StringIO
 import csv
 OPTIONS = {
-         'OPT_SEPARATOR': ',',
+         'OPT_SEPARATOR': ';',
          'OPT_QUOTING': '"',
-         'OPT_HAS_HEADER': True,
+         'OPT_HAS_HEADER': False,
         'OPT_ENCODING': 'utf-8',
      }
 # options defined in base_import/import.js
@@ -32,7 +32,7 @@ _logger = logging.getLogger(__name__)
 
 @job(default_channel='root.cdiscount')
 def sale_order_import_batch(session, model_name, backend_id, filters=None):
-    """ Prepare a batch import of records from Magento """
+    """ Prepare a batch import of sales to validate from Cdiscount """
     env =  get_environment(session, model_name, backend_id)
     importer = env.get_connector_unit(SaleOrderBatchImport)
     importer.run(filters=filters)
@@ -42,14 +42,14 @@ class CdiscountAdapter(CRUDAdapter):
     _model_name = ['cdiscount.sale.order']
 
     def search_read(self, filters=None):
-        #goodHash = listHash.replace("'", "\"")
-        #orders = json.loads(goodHash)
-        print "caca: "+str(len(listHash))
+
+        print "search_read: "+str(len(listHash))
         return listHash
         #return [{'order': 'num1','OrderNumber':'ON1'},{'order':'num2','OrderNumber':'ON2'}]
 
 @job
 def import_record_sale_order(session, att_id,record):
+    "Import Sale from Cdiscount to validate it "
     print "00"
     pass
 
@@ -71,11 +71,13 @@ class SaleOrderBatchImport(Importer):
 
     def _import_record(self, record, **kwargs):
         """ Import the record directly """
-        print "toto "+ str(record)
+        print "entree import_record "+ str(record)
         file_name = _getFilenameForSaleOrderJob(record.get('OrderNumber'))
         session = ConnectorSession.from_env(self.env)
          # create a CSV attachment and enqueue the job
         root, ext = os.path.splitext(file_name)
+        record_text= str(record)
+        print "le texte: "+ record_text
         att_id = _create_csv_attachment(session,
                                         record,
                                         file_name)
@@ -104,10 +106,11 @@ def _create_csv_attachment(session, h_data, file_name):
     f = StringIO()
     writer = csv.writer(f,
                         delimiter=str(OPTIONS['OPT_SEPARATOR']),
-                        quotechar=str(OPTIONS['OPT_QUOTING']))
+                        quotechar=str(OPTIONS['OPT_QUOTING'])
+                        )
     encoding = (OPTIONS['OPT_ENCODING'])
    # writer.writerow(_encode(h_data.keys(), encoding))
-    writer.writerow(_encode(h_data, encoding))
+    writer.writerow(_encode(str(h_data), encoding))
     # create attachment
     attachment = session.env['ir.attachment'].create({
         'name': file_name,
@@ -115,21 +118,10 @@ def _create_csv_attachment(session, h_data, file_name):
     })
     return attachment.id
 
-import collections
-def getStructure(data):
-    texte =""
-    for key, item in data.items():
-        if isinstance(item, collections.Iterable):
-            texte += key +": "
-            getStructure(item)
-        else:
-            texte += item
-
-        return texte
-
 def _encode(row, encoding):
-    return [cell.encode(encoding) for cell in row]
-
+    #insert des delimiter à chaque caractères ??
+    #return[cell.encode(encoding) for cell in row]
+    return [row.encode(encoding)]
 
 def _decode(row, encoding):
     return [cell.decode(encoding) for cell in row]
