@@ -72,7 +72,7 @@ class SaleOrderBatchImport(Importer):
     def _import_record(self, record, **kwargs):
         """ Import the record directly """
         print "entree import_record "+ str(record)
-        file_name = _getFilenameForSaleOrderJob(record.get('OrderNumber'))
+        file_name = _getFilenameForSaleOrderJob(record['Order']['OrderNumber'])
         session = ConnectorSession.from_env(self.env)
          # create a CSV attachment and enqueue the job
         root, ext = os.path.splitext(file_name)
@@ -96,7 +96,7 @@ class SaleOrderBatchImport(Importer):
         records = self.backend_adapter.search_read(filters)
         _logger.info('search ...')
         for record in records:
-                print "je print chaque record : " + str(record)
+                #print "je print chaque record : " + str(record)
                 self._import_record(record)
 
 
