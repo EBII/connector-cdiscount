@@ -50,7 +50,20 @@ class CdiscountAdapter(CRUDAdapter):
 @job
 def import_record_sale_order(session, att_id,record):
     "Import Sale from Cdiscount to validate it "
-    print "00"
+    print "cette command: "+record['Order']['OrderNumber']+" "+str(record)
+
+    #extraire un contact depuis record => si nouveau creer res_partner (ajouter id cdiscount )
+
+    #extraire la vente avec les détails de livraison (shipping address)
+    #lister les articles verfier existance
+    #ajouter les articles à la vente
+    #type de livraison
+    #ajouter la piece jointe en document d'origine du devis
+
+
+
+
+
     pass
 
 def _link_attachment_to_job(session, job_uuid, att_id):
