@@ -59,15 +59,11 @@ def import_record_sale_order(session, att_id,record):
     #ajouter les articles à la vente
     #type de livraison
     #ajouter la piece jointe en document d'origine du devis
-
-
-
-
-
     pass
 
 def _link_attachment_to_job(session, job_uuid, att_id):
     job = session.env['queue.job'].search([('uuid', '=', job_uuid)], limit=1)
+    _logger.info("on attacherai  " + str(job))
     session.env['ir.attachment'].browse(att_id).write({
         'res_model': 'queue.job',
         'res_id': job.id,
