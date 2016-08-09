@@ -43,14 +43,14 @@ class CdiscountAdapter(CRUDAdapter):
 
     def search_read(self, filters=None):
 
-        print "search_read: "+str(len(listHash))
+        _logger.info("search_read: "+str(len(listHash)))
         return listHash
         #return [{'order': 'num1','OrderNumber':'ON1'},{'order':'num2','OrderNumber':'ON2'}]
 
 @job
 def import_record_sale_order(session, att_id,record):
     "Import Sale from Cdiscount to validate it "
-    print "cette command: "+record['Order']['OrderNumber']+" "+str(record)
+    _logger.info( "cette command: "+record['Order']['OrderNumber']+" "+str(record))
 
     #extraire un contact depuis record => si nouveau creer res_partner (ajouter id cdiscount )
 
@@ -84,13 +84,19 @@ class SaleOrderBatchImport(Importer):
 
     def _import_record(self, record, **kwargs):
         """ Import the record directly """
-        print "entree import_record "+ str(record)
+        _logger.info("entree import_record "+ str(record))
         file_name = _getFilenameForSaleOrderJob(record['Order']['OrderNumber'])
         session = ConnectorSession.from_env(self.env)
          # create a CSV attachment and enqueue the job
         root, ext = os.path.splitext(file_name)
         record_text= str(record)
-        print "le texte: "+ record_text
+
+
+        # ajouter la pièce jointe et utiliser les test
+        # https://github.com/OCA/connector-interfaces/blob/9.0/base_import_async/models/base_import_async.py
+        #https://github.com/OCA/connector-interfaces/blob/9.0/base_import_async/models/base_import_async.py#L172
+
+        _logger.info("le texte avant creation de la piece jointe : "+ record_text)
         att_id = _create_csv_attachment(session,
                                         record,
                                         file_name)
@@ -98,11 +104,11 @@ class SaleOrderBatchImport(Importer):
         job_uuid = import_record_sale_order.delay(session,
                                           att_id,
                                           record)
+        _logger.info(u"job uuid generé : "+str(job_uuid)+ " attachement id: "+str(att_id))
+        _logger.info(u"et là on attache la piece joint au job")
+
         _link_attachment_to_job(session, job_uuid, att_id)
 
-        # todo ajouter la pièce jointe et utiliser les test
-        # https://github.com/OCA/connector-interfaces/blob/9.0/base_import_async/models/base_import_async.py
-        #https://github.com/OCA/connector-interfaces/blob/9.0/base_import_async/models/base_import_async.py#L172
 
     def run(self, filters):
         """ Run the synchronization """
