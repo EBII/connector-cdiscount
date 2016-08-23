@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 import unittest
-from .. import sale
+#from .. import sale
 
 class TestalaCon(unittest.TestCase):
 
@@ -16,6 +16,6 @@ class TestConnector(unittest.TestCase):
 
     def create_attachment(self):
         print "zzzzzzzzzzzzzzzzzooooooooooooooooooooobbbbbbbbbbbbbb"
-        cdiscountAdapter = sale.CdiscountAdapter().search_read()
-        print str(cdiscountAdapter)
-        sale.SaleOrderBatchImport.sale_order_import_batch()
+        # cdiscountAdapter = sale.CdiscountAdapter().search_read()
+        # print str(cdiscountAdapter)
+        # sale.SaleOrderBatchImport.sale_order_import_batch()

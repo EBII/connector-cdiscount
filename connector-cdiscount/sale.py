@@ -3,8 +3,9 @@
 import os
 from .backend import cdiscount
 from openerp.addons.connector.queue.job import job
-from .orderhash import HASH as listHash
+from tests.orderhash import HASH as listHash
 import json
+from .unit.tools import get_or_create_partner
 from openerp.addons.connector.unit.backend_adapter import CRUDAdapter
 from .connector import get_environment
 from openerp.addons.connector.unit.synchronizer import (Importer)
@@ -47,28 +48,38 @@ class CdiscountAdapter(CRUDAdapter):
         return listHash
         #return [{'order': 'num1','OrderNumber':'ON1'},{'order':'num2','OrderNumber':'ON2'}]
 
+
 @job
 def import_record_sale_order(session, att_id,record):
-    "Import Sale from Cdiscount to validate it "
-    _logger.info( "cette command: "+record['Order']['OrderNumber']+" "+str(record))
 
-    #extraire un contact depuis record => si nouveau creer res_partner (ajouter id cdiscount )
+    "Import Sale from Cdiscount to validate it "
+    _logger.info( "cette command: "+record['Order']['OrderNumber']+" ")
+     #extraire un contact depuis record => si nouveau creer res_partner (ajouter id cdiscount )
+    partner_Id = get_or_create_partner(session,record)
+    _logger.info(partner_Id)
+    #contact_id = getContact_or_create(record)
+
 
     #extraire la vente avec les détails de livraison (shipping address)
+
     #lister les articles verfier existance
     #ajouter les articles à la vente
     #type de livraison
     #ajouter la piece jointe en document d'origine du devis
     pass
 
-def _link_attachment_to_job(session, job_uuid, att_id):
+def _link_attachment_to_job(session,file_name, job_uuid, att_id):
 
     job = session.env['queue.job'].search([('uuid', '=', job_uuid)], limit=1)
-    _logger.info("on attacherai  " + str(job)+" id attch: "+ str(att_id) )
+    _logger.info("on attacherai  " + str(job.id)+" id attch: "+ str(att_id) )
     session.env['ir.attachment'].browse(att_id).write({
         'res_model': 'queue.job',
         'res_id': job.id,
-})
+        'res_name':file_name,
+        })
+
+
+
 
 def _getFilenameForSaleOrderJob(order_number):
     adate = date.today()
@@ -85,7 +96,7 @@ class SaleOrderBatchImport(Importer):
         file_name = _getFilenameForSaleOrderJob(record['Order']['OrderNumber'])
         session = ConnectorSession.from_env(self.env)
          # create a CSV attachment and enqueue the job
-        root, ext = os.path.splitext(file_name)
+        #root, ext = os.path.splitext(file_name)
         record_text= str(record)
 
 
@@ -94,6 +105,8 @@ class SaleOrderBatchImport(Importer):
         #https://github.com/OCA/connector-interfaces/blob/9.0/base_import_async/models/base_import_async.py#L172
 
         _logger.info("le texte avant creation de la piece jointe : "+ record_text)
+        _logger.info("le file_name : "+ file_name)
+
         att_id = _create_csv_attachment(session,
                                         record,
                                         file_name)
@@ -104,7 +117,7 @@ class SaleOrderBatchImport(Importer):
         _logger.info(u"job uuid generé : "+str(job_uuid)+ " attachement id: "+str(att_id))
         _logger.info(u"et là on attache la piece joint au job")
 
-        _link_attachment_to_job(session, job_uuid, att_id)
+        _link_attachment_to_job(session,file_name, job_uuid, att_id)
 
 
     def run(self, filters):
