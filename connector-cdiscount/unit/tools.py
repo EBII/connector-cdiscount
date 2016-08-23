@@ -52,3 +52,14 @@ def getcivility_Id(session, shortcut):
             })
     _logger.info('id civility: ' +str(title))
     return title.id
+
+def create_quotations(session,values):
+
+    quotation_id = session.env['sale.order'].create(values)
+    return quotation_id.id
+
+def add_item_to_quotations(session, values):
+
+    items_id = session.env['sale.order.line'].create(values)
+    return True
+

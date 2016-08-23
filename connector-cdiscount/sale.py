@@ -5,7 +5,7 @@ from .backend import cdiscount
 from openerp.addons.connector.queue.job import job
 from tests.orderhash import HASH as listHash
 import json
-from .unit.tools import get_or_create_partner
+from .unit.tools import get_or_create_partner, create_quotations ,add_item_to_quotations
 from openerp.addons.connector.unit.backend_adapter import CRUDAdapter
 from .connector import get_environment
 from openerp.addons.connector.unit.synchronizer import (Importer)
@@ -57,9 +57,24 @@ def import_record_sale_order(session, att_id,record):
      #extraire un contact depuis record => si nouveau creer res_partner (ajouter id cdiscount )
     partner_Id = get_or_create_partner(session,record)
     _logger.info(partner_Id)
-    #contact_id = getContact_or_create(record)
+    # create sale_quotations
+    values =  {'partner_id':partner_Id,'client_order_ref' : record['Order']['OrderNumber'],'warehouse_id' : 1, }
+    quotation_Id = create_quotations(session,values)
+    _logger.info('creation du devis : ' + str(quotation_Id))
+    orderLines = record['Order']['OrderLineList']
+    _logger.info ('longeur' + str(len(orderLines)))
+    _logger.info('les lignes : ' + str(orderLines))
+    if len(orderLines) >1 :
 
-
+        for order_line in orderLines:
+            _logger.info('Orderline:'  + str(order_line))
+            price_unit = order_line['PurchasePrice']
+            line_values = {'order_id': quotation_Id, 'product_uom_qty': order_line['Quantity'],'price_unit': price_unit ,'name': order_line['SellerProductId'], }
+            add_item_to_quotations(session, line_values)
+    else:
+        price_unit = orderLines['OrderLine']['PurchasePrice']
+        line_values = {'order_id': quotation_Id, 'product_uom_qty': orderLines['OrderLine']['Quantity'],'price_unit': price_unit ,'name':orderLines['OrderLine']['SellerProductId'], }
+        add_item_to_quotations(session, line_values)
     #extraire la vente avec les détails de livraison (shipping address)
 
     #lister les articles verfier existance
@@ -80,7 +95,7 @@ def _link_attachment_to_job(session,file_name, job_uuid, att_id):
 
 
 
-
+#genere un nom de fichier
 def _getFilenameForSaleOrderJob(order_number):
     adate = date.today()
     return "Sale-"+str(adate)+"-"+str(order_number)
@@ -98,8 +113,6 @@ class SaleOrderBatchImport(Importer):
          # create a CSV attachment and enqueue the job
         #root, ext = os.path.splitext(file_name)
         record_text= str(record)
-
-
         # ajouter la pièce jointe et utiliser les test
         # https://github.com/OCA/connector-interfaces/blob/9.0/base_import_async/models/base_import_async.py
         #https://github.com/OCA/connector-interfaces/blob/9.0/base_import_async/models/base_import_async.py#L172
@@ -126,6 +139,7 @@ class SaleOrderBatchImport(Importer):
         _logger.info('search ...')
         for record in records:
                 #print "je print chaque record : " + str(record)
+                _logger.info(record)
                 self._import_record(record)
 
 
