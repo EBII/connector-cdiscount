@@ -52,19 +52,34 @@ class CdiscountAdapter(CRUDAdapter):
 @job
 def import_record_sale_order(session, att_id,record):
 
-    "Import Sale from Cdiscount to validate it "
+    "Sale Imported from Cdiscount to validate it in Quotations "
     _logger.info( "cette command: "+record['Order']['OrderNumber']+" ")
      #extraire un contact depuis record => si nouveau creer res_partner (ajouter id cdiscount )
-    partner_Id = get_or_create_partner(session,record)
-    _logger.info(partner_Id)
+    partner_customer_id, partner_billing_id, partner_shipping_id = get_or_create_partner(session,record)
+
+    _logger.info(str(partner_customer_id))
+    _logger.info(str(partner_billing_id))
+    _logger.info( str(partner_shipping_id))
     # create sale_quotations
-    values =  {'partner_id':partner_Id,'client_order_ref' : record['Order']['OrderNumber'],'warehouse_id' : 1, }
+    values =  {'partner_id':partner_customer_id,
+               'partner_invoice_id':partner_billing_id,
+               'partner_shipping_id':partner_shipping_id,
+               'client_order_ref' : record['Order']['OrderNumber'],
+               'warehouse_id' : 1, }
     quotation_Id = create_quotations(session,values)
     _logger.info('creation du devis : ' + str(quotation_Id))
     orderLines = record['Order']['OrderLineList']
+    #attachement de la piece jointes au nouveau devis
+    session.env['ir.attachment'].browse(att_id).write({
+        'res_model': 'sale.order',
+        'res_id': quotation_Id,
+        })
+    _logger.info('attachement de la piece jointes au devis' + str(att_id))
     _logger.info ('longeur' + str(len(orderLines)))
     _logger.info('les lignes : ' + str(orderLines))
-    if len(orderLines) >1 :
+
+    _logger.info(type(orderLines))
+    if len(orderLines) > 1:
 
         for order_line in orderLines:
             _logger.info('Orderline:'  + str(order_line))
@@ -72,7 +87,7 @@ def import_record_sale_order(session, att_id,record):
             line_values = {'order_id': quotation_Id, 'product_uom_qty': order_line['Quantity'],'price_unit': price_unit ,'name': order_line['SellerProductId'], }
             add_item_to_quotations(session, line_values)
     else:
-        price_unit = orderLines['OrderLine']['PurchasePrice']
+        price_unit = round(float(orderLines['OrderLine']['PurchasePrice']), 2)
         line_values = {'order_id': quotation_Id, 'product_uom_qty': orderLines['OrderLine']['Quantity'],'price_unit': price_unit ,'name':orderLines['OrderLine']['SellerProductId'], }
         add_item_to_quotations(session, line_values)
     #extraire la vente avec les détails de livraison (shipping address)
