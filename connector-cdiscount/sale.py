@@ -3,7 +3,8 @@
 import os
 from .backend import cdiscount
 from openerp.addons.connector.queue.job import job
-from tests.orderhash import HASH as listHash
+#from tests.orderhash import HASH as listHash
+from tests.getSales import do_the_job
 import json
 from .unit.tools import get_or_create_partner, create_quotations ,add_item_to_quotations
 from openerp.addons.connector.unit.backend_adapter import CRUDAdapter
@@ -34,9 +35,10 @@ _logger = logging.getLogger(__name__)
 @job(default_channel='root.cdiscount')
 def sale_order_import_batch(session, model_name, backend_id, filters=None):
     """ Prepare a batch import of sales to validate from Cdiscount """
-    env =  get_environment(session, model_name, backend_id)
+    env = get_environment(session, model_name, backend_id)
     importer = env.get_connector_unit(SaleOrderBatchImport)
     importer.run(filters=filters)
+
 
 @cdiscount
 class CdiscountAdapter(CRUDAdapter):
@@ -44,6 +46,7 @@ class CdiscountAdapter(CRUDAdapter):
 
     def search_read(self, filters=None):
 
+        listHash = do_the_job('toto', 'tutu', 0 )
         _logger.info("search_read: "+str(len(listHash)))
         return listHash
         #return [{'order': 'num1','OrderNumber':'ON1'},{'order':'num2','OrderNumber':'ON2'}]
@@ -51,52 +54,57 @@ class CdiscountAdapter(CRUDAdapter):
 
 @job
 def import_record_sale_order(session, att_id,record):
-
     "Sale Imported from Cdiscount to validate it in Quotations "
+
     _logger.info( "cette command: "+record['Order']['OrderNumber']+" ")
-     #extraire un contact depuis record => si nouveau creer res_partner (ajouter id cdiscount )
+    # Extraire un 3 contact depuis record => si nouveau creer res_partner principal (ajouter id cdiscount )
+    #
     partner_customer_id, partner_billing_id, partner_shipping_id = get_or_create_partner(session,record)
 
     _logger.info(str(partner_customer_id))
     _logger.info(str(partner_billing_id))
     _logger.info( str(partner_shipping_id))
+
     # create sale_quotations
+    #
     values =  {'partner_id':partner_customer_id,
                'partner_invoice_id':partner_billing_id,
                'partner_shipping_id':partner_shipping_id,
                'client_order_ref' : record['Order']['OrderNumber'],
                'warehouse_id' : 1, }
-    quotation_Id = create_quotations(session,values)
-    _logger.info('creation du devis : ' + str(quotation_Id))
-    orderLines = record['Order']['OrderLineList']
-    #attachement de la piece jointes au nouveau devis
-    session.env['ir.attachment'].browse(att_id).write({
-        'res_model': 'sale.order',
-        'res_id': quotation_Id,
-        })
+    quotation_id = create_quotations(session,values)
+
+    _logger.info('creation du devis : ' + str(quotation_id))
+    order_lines = record['Order']['OrderLineList']
+
+    # Attachement de la piece jointes au nouveau devis
+    #
+    session.env['ir.attachment'].browse(att_id)\
+        .write({'res_model': 'sale.order',
+                'res_id': quotation_id,
+                })
+
     _logger.info('attachement de la piece jointes au devis' + str(att_id))
-    _logger.info ('longeur' + str(len(orderLines)))
-    _logger.info('les lignes : ' + str(orderLines))
+    _logger.info ('longeur' + str(len(order_lines)))
+    _logger.info('les lignes : ' + str(order_lines))
+    _logger.info(type(order_lines))
 
-    _logger.info(type(orderLines))
-    if len(orderLines) > 1:
+    #Selon le nombre de ligne de produits dans la commande (ajuster avec le DICO  reel
+    if len(order_lines) > 1:
 
-        for order_line in orderLines:
+        for order_line in order_lines:
             _logger.info('Orderline:'  + str(order_line))
             price_unit = order_line['PurchasePrice']
-            line_values = {'order_id': quotation_Id, 'product_uom_qty': order_line['Quantity'],'price_unit': price_unit ,'name': order_line['SellerProductId'], }
+            line_values = {'order_id': quotation_id, 'product_uom_qty': order_line['Quantity'],'price_unit': price_unit ,'name': order_line['SellerProductId'], }
             add_item_to_quotations(session, line_values)
     else:
-        price_unit = round(float(orderLines['OrderLine']['PurchasePrice']), 2)
-        line_values = {'order_id': quotation_Id, 'product_uom_qty': orderLines['OrderLine']['Quantity'],'price_unit': price_unit ,'name':orderLines['OrderLine']['SellerProductId'], }
+        price_unit = round(float(order_lines['OrderLine']['PurchasePrice']), 2)
+        line_values = {'order_id': quotation_id, 'product_uom_qty': order_lines['OrderLine']['Quantity'],'price_unit': price_unit ,'name':order_lines['OrderLine']['SellerProductId'], }
         add_item_to_quotations(session, line_values)
-    #extraire la vente avec les détails de livraison (shipping address)
 
     #lister les articles verfier existance
-    #ajouter les articles à la vente
-    #type de livraison
-    #ajouter la piece jointe en document d'origine du devis
-    pass
+    #utiliser des data qui contiennetn un code produit juste.. ou de demo dont le produit existe
+
 
 def _link_attachment_to_job(session,file_name, job_uuid, att_id):
 
