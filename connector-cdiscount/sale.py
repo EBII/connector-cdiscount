@@ -160,10 +160,12 @@ class SaleOrderBatchImport(Importer):
         """ Run the synchronization """
         records = self.backend_adapter.search_read(filters)
         _logger.info('search ...')
+        _logger.info('le h: '+ str(records))
         for record in records:
-                #print "je print chaque record : " + str(record)
-                _logger.info(record)
-                self._import_record(record)
+            _logger.info(str(record))
+            #print "je print chaque record : " + str(record)
+            _logger.info(record)
+            self._import_record(record)
 
 
 
