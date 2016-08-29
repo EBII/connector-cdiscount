@@ -42,6 +42,6 @@ Images
 Contributors
 ------------
 
-* Eric Bouhana <eric@ebii.fr>
-* Sébastien BEAU <sebastien.beau@akretion.com>
+* Eric Bouhana <contact AT ebii POINT fr>
+* Sébastien BEAU <sebastien POINT beau AT akretion POINT com>
 
