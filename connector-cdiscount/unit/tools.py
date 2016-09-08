@@ -7,63 +7,63 @@ _logger = logging.getLogger(__name__)
 def get_or_create_partner (session, record):
     if not record:
         return
-    client_id= record['Order']['Customer']['CustomerId']
-    code_country = record['Order']['ShippingAddress']['Country']
+    client_id= record['Customer']['CustomerId']
+    code_country = record['ShippingAddress']['Country']
     country = session.env['res.country'].search([('code','ilike',code_country)])
     country_Id = country.id
     pids = session.env['res.partner'].search([('cdis_Id', 'ilike', client_id),('type','ilike','default')])
-    _logger.info('create contact civility or get id:' + record['Order']['Customer']['Civility']+ 'pids:' + str(pids))
+    _logger.info('create contact civility or get id:' + record['Customer']['Civility']+ 'pids:' + str(pids))
 
     if len(pids) != 1 :
         # le client nexiste pas
-        customer_shortCivility = record['Order']['Customer']['Civility']
+        customer_shortCivility = record['Customer']['Civility']
         customer_civility_id = getcivility_Id(session, customer_shortCivility)
-        customer_partner_name = record['Order']['Customer']['FirstName'].title() + " " + record['Order']['Customer']['LastName'].title()
+        customer_partner_name = record['Customer']['FirstName'].title() + " " + record['Customer']['LastName'].title()
         #creation du respartner customer
         customer_values = {
               'title' : customer_civility_id,
               'type' : 'default',
-              'cdis_Id': record['Order']['Customer']['CustomerId'],
+              'cdis_Id': record['Customer']['CustomerId'],
               'name' : customer_partner_name,
-              'mobile' :record['Order']['Customer']['MobilePhone'],
-              'street': record['Order']['BillingAddress']['Street'],
-              'zip': record['Order']['BillingAddress']['ZipCode'],
-              'city': record['Order']['BillingAddress']['City'],
+              'mobile' :record['Customer']['MobilePhone'],
+              'street': record['BillingAddress']['Street'],
+              'zip': record['BillingAddress']['ZipCode'],
+              'city': record['BillingAddress']['City'],
               'country_id': country_Id,
               'customer': True,
             }
         partner_customer = session.env['res.partner'].create(customer_values)
         #creation du respartner billing
-        billing_shortCivility = record['Order']['Customer']['Civility']
+        billing_shortCivility = record['Customer']['Civility']
         billing_civility_id = getcivility_Id(session, billing_shortCivility)
-        billing_partner_name = record['Order']['BillingAddress']['FirstName'].title() + " " + record['Order']['BillingAddress']['LastName'].title()
+        billing_partner_name = record['BillingAddress']['FirstName'].title() + " " + record['BillingAddress']['LastName'].title()
         billing_values = {
                       'title' : billing_civility_id,
                       'type' : 'invoice',
-                      'cdis_Id': record['Order']['OrderNumber'],
+                      'cdis_Id': record['OrderNumber'],
                       'name' : billing_partner_name,
-                      #'mobile' :record['Order']['Customer']['MobilePhone'],
-                      'street': record['Order']['BillingAddress']['Street'],
-                      'zip': record['Order']['BillingAddress']['ZipCode'],
-                      'city': record['Order']['BillingAddress']['City'],
+                      #'mobile' :record['Customer']['MobilePhone'],
+                      'street': record['BillingAddress']['Street'],
+                      'zip': record['BillingAddress']['ZipCode'],
+                      'city': record['BillingAddress']['City'],
                       'country_id': country_Id,
                       'customer': True,
                       'parent_id': partner_customer.id,
                     }
         partner_billing = session.env['res.partner'].create(billing_values)
         #creation du respartner shipping
-        shippping_shortCivility = record['Order']['Customer']['Civility']
+        shippping_shortCivility = record['Customer']['Civility']
         shippping_civility_id = getcivility_Id(session, shippping_shortCivility)
-        shippping_partner_name = record['Order']['ShippingAddress']['FirstName'].title() + " " + record['Order']['ShippingAddress']['LastName'].title()
+        shippping_partner_name = record['ShippingAddress']['FirstName'].title() + " " + record['ShippingAddress']['LastName'].title()
         shipping_values = {
                       'title' : shippping_civility_id,
                       'type' : 'delivery',
-                      'cdis_Id': record['Order']['OrderNumber'],
+                      'cdis_Id': record['OrderNumber'],
                       'name' : shippping_partner_name,
-                      #'mobile' :record['Order']['Customer']['MobilePhone'],
-                      'street': record['Order']['ShippingAddress']['Street'],
-                      'zip': record['Order']['ShippingAddress']['ZipCode'],
-                      'city': record['Order']['ShippingAddress']['City'],
+                      #'mobile' :record['Customer']['MobilePhone'],
+                      'street': record['ShippingAddress']['Street'],
+                      'zip': record['ShippingAddress']['ZipCode'],
+                      'city': record['ShippingAddress']['City'],
                       'country_id': country_Id,
                       'customer': True,
                       'parent_id': partner_customer.id,
@@ -74,18 +74,18 @@ def get_or_create_partner (session, record):
         #le client existe déjà
         _logger.info('le client exist deja')
         partner_customer = pids
-        billing_shortCivility = record['Order']['Customer']['Civility']
+        billing_shortCivility = record['Customer']['Civility']
         billing_civility_id = getcivility_Id(session, billing_shortCivility)
-        billing_partner_name = record['Order']['BillingAddress']['FirstName'].title() + " " + record['Order']['BillingAddress']['LastName'].title()
+        billing_partner_name = record['BillingAddress']['FirstName'].title() + " " + record['BillingAddress']['LastName'].title()
         billing_values = {
                       'title' : billing_civility_id,
                       'type' : 'invoice',
-                      'cdis_Id': record['Order']['OrderNumber'],
+                      'cdis_Id': record['OrderNumber'],
                       'name' : billing_partner_name,
-                      #'mobile' :record['Order']['Customer']['MobilePhone'],
-                      'street': record['Order']['BillingAddress']['Street'],
-                      'zip': record['Order']['BillingAddress']['ZipCode'],
-                      'city': record['Order']['BillingAddress']['City'],
+                      #'mobile' :record['Customer']['MobilePhone'],
+                      'street': record['BillingAddress']['Street'],
+                      'zip': record['BillingAddress']['ZipCode'],
+                      'city': record['BillingAddress']['City'],
                       'country_id': country_Id,
                       'customer': True,
                       'parent_id':pids.id
@@ -93,18 +93,18 @@ def get_or_create_partner (session, record):
         partner_billing = session.env['res.partner'].create(billing_values)
 
        #creation du respartner shipping
-        shippping_shortCivility = record['Order']['Customer']['Civility']
+        shippping_shortCivility = record['Customer']['Civility']
         shippping_civility_id = getcivility_Id(session, shippping_shortCivility)
-        shippping_partner_name = record['Order']['ShippingAddress']['FirstName'].title() + " " + record['Order']['ShippingAddress']['LastName'].title()
+        shippping_partner_name = record['ShippingAddress']['FirstName'].title() + " " + record['ShippingAddress']['LastName'].title()
         shipping_values = {
                       'title' : shippping_civility_id,
                       'type' : 'delivery',
-                      'cdis_Id': record['Order']['OrderNumber'],
+                      'cdis_Id': record['OrderNumber'],
                       'name' : shippping_partner_name,
-                      #'mobile' :record['Order']['Customer']['MobilePhone'],
-                      'street': record['Order']['ShippingAddress']['Street'],
-                      'zip': record['Order']['ShippingAddress']['ZipCode'],
-                      'city': record['Order']['ShippingAddress']['City'],
+                      #'mobile' :record['Customer']['MobilePhone'],
+                      'street': record['ShippingAddress']['Street'],
+                      'zip': record['ShippingAddress']['ZipCode'],
+                      'city': record['ShippingAddress']['City'],
                       'country_id': country_Id,
                       'customer': True,
                       'parent_id':pids.id,

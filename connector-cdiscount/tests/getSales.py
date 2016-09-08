@@ -68,7 +68,14 @@ def do_the_job(username, password, mode ):
     # adate = date.today()
     # with open('sales_'+adate+'.txt', 'wb') as fh:
     #     json.dump(h_list_of_sale, fh)
+    namespaces = {
+        'http://schemas.xmlsoap.org/soap/envelope/': None,  # skip this namespace
+        'http://www.cdiscount.com': None,  # collapse "http://a.com/" -> "ns_a"
+        'http://www.w3.org/2001/XMLSchema-instance': None,  # collapse "http://a.com/" -> "ns_a"
+        'http://schemas.datacontract.org/2004/07/Cdiscount.Framework.Core.Communication.Messages': None,
+    # collapse "http://a.com/" -> "ns_a"
+    }
+    with open('tests/sample.xml', 'r') as f:
+        d = xd.parse(f, process_namespaces=True, namespaces=namespaces)
 
-    with open('tests/sample.xml','r') as f:
-        d = xd.parse(f)
     return d #h_list_of_sale

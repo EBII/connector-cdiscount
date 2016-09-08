@@ -19,6 +19,36 @@ class CdiscountBinding(models.AbstractModel):
                             select=True)
 
 
+# class CdiscountBinding(models.AbstractModel):
+#     _name = "cdiscount.binding"
+#     _inherit = "external.binding"
+#
+#     backend_id = fields.Many2one(
+#         comodel_name='cdiscount.backend',
+#         string='Cdiscount Backend',
+#         required=True,
+#         ondelete='restrict',
+#     )
+#     cdiscount_id = fields.Char(string='ID on Cdiscount')
+#
+
+class CdiscountSaleOrder(models.Model):
+    _name = 'cdiscount.sale.order'
+    _inherit = 'cdiscount.binding'
+
+
+class CdiscountResPartner(models.Model):
+    _name = 'cdiscount.res.partner'
+    _inherit = 'cdiscount.binding'
+
+
+
+
+
+
+
+
+
 def get_environment(session, model_name, backend_id):
     """ Create an environment to work with. """
     backend_record = session.env['cdiscount.backend'].browse(backend_id)
