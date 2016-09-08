@@ -7,10 +7,9 @@ from openerp import http, models, api, fields, _
 #from tests.orderhash import HASH as listHash
 from tests.getSales import do_the_job
 import json
-from unit.serialize_json import data_to_json
 from .unit.tools import get_or_create_partner, create_quotations ,add_item_to_quotations
 from openerp.addons.connector.unit.backend_adapter import CRUDAdapter
-
+from unit.serialize_json import json_to_data
 from .connector import get_environment
 from openerp.addons.connector.unit.synchronizer import (Importer)
 from openerp.addons.connector.session import ConnectorSession
@@ -64,7 +63,8 @@ class CdiscountSaleOrderImporter(Importer):
 
     def _get_data(self, attachment_id):
         attachment = self.env['ir.attachment'].browse( attachment_id)
-        return json.load(attachment.datas)
+        _logger.info(attachment.datas)
+        return json.loads(attachment.datas)
 
     def _import_dependency(self):
         # TODO importer les partenaires..*[]:
@@ -105,7 +105,7 @@ class CdiscountSaleOrderImporter(Importer):
 @job
 def import_record_sale_order(session, model, att_id,backend_id ):
     "Sale Imported from Cdiscount to validate it in Quotations "
-    env = get_environment(session, 'sale.order', backend_id)gi
+    env = get_environment(session, 'sale.order', backend_id)
     importer = env.get_connector_unit(CdiscountSaleOrderImporter)
     importer.run(att_id)
 
