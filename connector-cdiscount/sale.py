@@ -3,6 +3,7 @@
 import os
 from .backend import cdiscount
 from openerp.addons.connector.queue.job import job
+import openerp.addons.decimal_precision as dp
 from openerp import http, models, api, fields, _
 #from tests.orderhash import HASH as listHash
 from tests.getSales import do_the_job
@@ -15,6 +16,10 @@ from openerp.addons.connector.unit.synchronizer import (Importer)
 from openerp.addons.connector.session import ConnectorSession
 from datetime import date
 import logging
+from openerp.addons.connector.unit.mapper import (mapping,
+                                                  ImportMapper
+                                                  )
+from .unit.mapper import normalize_datetime
 #from openerp import http, models, api, fields, _
 from cStringIO import StringIO
 #
@@ -32,6 +37,271 @@ from cStringIO import StringIO
 
 
 _logger = logging.getLogger(__name__)
+
+
+class CdiscountSaleOrder(models.Model):
+    _name = 'cdiscount.sale.order'
+    _inherit = 'cdiscount.binding'
+    _description = 'Cdiscount Sale Order'
+    _inherits = {'sale.order': 'openerp_id'}
+
+    openerp_id = fields.Many2one(comodel_name='sale.order',
+                                 string='Sale Order',
+                                 required=True,
+                                 ondelete='cascade')
+    cdiscount_order_line_ids = fields.One2many(
+        comodel_name='cdiscount.sale.order.line',
+        inverse_name='cdiscount_order_id',
+        string='Cdiscount Order Lines'
+    )
+    total_amount = fields.Float(
+        string='Total amount',
+        digits_compute=dp.get_precision('Account')
+    )
+    total_amount_tax = fields.Float(
+        string='Total amount w. tax',
+        digits_compute=dp.get_precision('Account')
+    )
+    cdiscount_order_id = fields.Integer(string='Cdiscount Order ID',
+                                      help="'order_id' field in Cdiscount")
+
+
+class SaleOrder(models.Model):
+    _inherit = 'sale.order'
+
+    cdiscount_bind_ids = fields.One2many(
+        comodel_name='cdiscount.sale.order',
+        inverse_name='openerp_id',
+        string="Cdiscount Bindings",
+    )
+
+class CdiscountSaleOrderLine(models.Model):
+    _name = 'cdiscount.sale.order.line'
+    _inherit = 'cdiscount.binding'
+    _description = 'Cdiscount Sale Order Line'
+    _inherits = {'sale.order.line': 'openerp_id'}
+
+    cdiscount_order_id = fields.Many2one(comodel_name='cdiscount.sale.order',
+                                       string='Cdiscount Sale Order',
+                                       required=True,
+                                       ondelete='cascade',
+                                       select=True)
+    openerp_id = fields.Many2one(comodel_name='sale.order.line',
+                                 string='Sale Order Line',
+                                 required=True,
+                                 ondelete='cascade')
+    backend_id = fields.Many2one(
+        related='cdiscount_order_id.backend_id',
+        string='Cdiscount Backend',
+        readonly=True,
+        store=True,
+        # override 'cdiscount.binding', can't be INSERTed if True:
+        required=False,
+    )
+    tax_rate = fields.Float(string='Tax Rate',
+                            digits_compute=dp.get_precision('Account'))
+    notes = fields.Char()
+
+    @api.model
+    def create(self, vals):
+        cdiscount_order_id = vals['cdiscount_order_id']
+        binding = self.env['cdiscount.sale.order'].browse(cdiscount_order_id)
+        vals['order_id'] = binding.openerp_id.id
+        binding = super(CdiscountSaleOrderLine, self).create(vals)
+        # FIXME triggers function field
+        # The amounts (amount_total, ...) computed fields on 'sale.order' are
+        # not triggered when cdiscount.sale.order.line are created.
+        # It might be a v8 regression, because they were triggered in
+        # v7. Before getting a better correction, force the computation
+        # by writing again on the line.
+        line = binding.openerp_id
+        line.write({'price_unit': line.price_unit})
+        return binding
+
+
+class SaleOrderLine(models.Model):
+    _inherit = 'sale.order.line'
+
+    cdiscount_bind_ids = fields.One2many(
+        comodel_name='cdiscount.sale.order.line',
+        inverse_name='openerp_id',
+        string="Cdiscount Bindings",
+    )
+
+@cdiscount
+class SaleOrderImportMapper(ImportMapper):
+    _model_name = 'cdiscount.sale.order'
+
+    direct = [('increment_id', 'cdiscount_id'),
+              ('order_id', 'cdiscount_order_id'),
+              ('grand_total', 'total_amount'),
+              ('tax_amount', 'total_amount_tax'),
+              (normalize_datetime('created_at'), 'date_order'),
+              ('store_id', 'storeview_id'),
+              ]
+
+    children = [('items', 'cdiscount_order_line_ids', 'cdiscount.sale.order.line'),
+                ]
+
+    def _add_shipping_line(self, map_record, values):
+        record = map_record.source
+        amount_incl = float(record.get('base_shipping_incl_tax') or 0.0)
+        amount_excl = float(record.get('shipping_amount') or 0.0)
+        if not (amount_incl or amount_excl):
+            return values
+        line_builder = self.unit_for(CdiscountShippingLineBuilder)
+        if self.options.tax_include:
+            discount = float(record.get('shipping_discount_amount') or 0.0)
+            line_builder.price_unit = (amount_incl - discount)
+        else:
+            line_builder.price_unit = amount_excl
+
+        if values.get('carrier_id'):
+            carrier = self.env['delivery.carrier'].browse(values['carrier_id'])
+            line_builder.product = carrier.product_id
+
+        line = (0, 0, line_builder.get_line())
+        values['order_line'].append(line)
+        return values
+
+    def _add_cash_on_delivery_line(self, map_record, values):
+        record = map_record.source
+        amount_excl = float(record.get('cod_fee') or 0.0)
+        amount_incl = float(record.get('cod_tax_amount') or 0.0)
+        if not (amount_excl or amount_incl):
+            return values
+        line_builder = self.unit_for(CdiscountCashOnDeliveryLineBuilder)
+        tax_include = self.options.tax_include
+        line_builder.price_unit = amount_incl if tax_include else amount_excl
+        line = (0, 0, line_builder.get_line())
+        values['order_line'].append(line)
+        return values
+
+    def _add_gift_certificate_line(self, map_record, values):
+        record = map_record.source
+        if 'gift_cert_amount' not in record:
+            return values
+        # if gift_cert_amount is zero
+        if not record.get('gift_cert_amount'):
+            return values
+        amount = float(record['gift_cert_amount'])
+        line_builder = self.unit_for(CdiscountGiftOrderLineBuilder)
+        line_builder.price_unit = amount
+        if 'gift_cert_code' in record:
+            line_builder.gift_code = record['gift_cert_code']
+        line = (0, 0, line_builder.get_line())
+        values['order_line'].append(line)
+        return values
+
+    def finalize(self, map_record, values):
+        values.setdefault('order_line', [])
+        values = self._add_shipping_line(map_record, values)
+        values = self._add_cash_on_delivery_line(map_record, values)
+        values = self._add_gift_certificate_line(map_record, values)
+        values.update({
+            'partner_id': self.options.partner_id,
+            'partner_invoice_id': self.options.partner_invoice_id,
+            'partner_shipping_id': self.options.partner_shipping_id,
+        })
+        onchange = self.unit_for(SaleOrderOnChange)
+        return onchange.play(values, values['cdiscount_order_line_ids'])
+
+    @mapping
+    def name(self, record):
+        name = record['increment_id']
+        prefix = self.backend_record.sale_prefix
+        if prefix:
+            name = prefix + name
+        return {'name': name}
+
+    @mapping
+    def customer_id(self, record):
+        binder = self.binder_for('cdiscount.res.partner')
+        partner_id = binder.to_openerp(record['customer_id'], unwrap=True)
+        assert partner_id is not None, (
+            "customer_id %s should have been imported in "
+            "SaleOrderImporter._import_dependencies" % record['customer_id'])
+        return {'partner_id': partner_id}
+
+    @mapping
+    def payment(self, record):
+        record_method = record['payment']['method']
+        method = self.env['payment.method'].search(
+            [['name', '=', record_method]],
+            limit=1,
+        )
+        assert method, ("method %s should exist because the import fails "
+                        "in SaleOrderImporter._before_import when it is "
+                        " missing" % record['payment']['method'])
+        return {'payment_method_id': method.id}
+
+    @mapping
+    def shipping_method(self, record):
+        ifield = record.get('shipping_method')
+        if not ifield:
+            return
+
+        carrier = self.env['delivery.carrier'].search(
+            [('cdiscount_code', '=', ifield)],
+            limit=1,
+        )
+        if carrier:
+            result = {'carrier_id': carrier.id}
+        else:
+            fake_partner = self.env['res.partner'].search([], limit=1)
+            product = self.env.ref(
+                'connector_ecommerce.product_product_shipping')
+            carrier = self.env['delivery.carrier'].create({
+                'partner_id': fake_partner.id,
+                'product_id': product.id,
+                'name': ifield,
+                'cdiscount_code': ifield})
+            result = {'carrier_id': carrier.id}
+        return result
+
+    @mapping
+    def sales_team(self, record):
+        team = self.options.storeview.section_id
+        if team:
+            return {'section_id': team.id}
+
+    @mapping
+    def project_id(self, record):
+        project_id = self.options.storeview.account_analytic_id
+        if project_id:
+            return {'project_id': project_id.id}
+
+    @mapping
+    def fiscal_position(self, record):
+        fiscal_position = self.options.storeview.fiscal_position_id
+        if fiscal_position:
+            return {'fiscal_position': fiscal_position.id}
+
+    # partner_id, partner_invoice_id, partner_shipping_id
+    # are done in the importer
+
+    @mapping
+    def backend_id(self, record):
+        return {'backend_id': self.backend_record.id}
+
+    @mapping
+    def user_id(self, record):
+        """ Do not assign to a Salesperson otherwise sales orders are hidden
+        for the salespersons (access rules)"""
+        return {'user_id': False}
+
+    @mapping
+    def sale_order_comment(self, record):
+        comment_mapper = self.unit_for(SaleOrderCommentImportMapper)
+        map_record = comment_mapper.map_record(record)
+        return map_record.values(**self.options)
+
+    @mapping
+    def pricelist_id(self, record):
+        pricelist_mapper = self.unit_for(PricelistSaleOrderImportMapper)
+        return pricelist_mapper.map_record(record).values(**self.options)
+
+
 
 
 @job(default_channel='root.cdiscount')
@@ -53,9 +323,10 @@ class CdiscountAdapter(CRUDAdapter):
         return listHash
         #return [{'order': 'num1','OrderNumber':'ON1'},{'order':'num2','OrderNumber':'ON2'}]
 
+
 @cdiscount
 class CdiscountSaleOrderImporter(Importer):
-    _model_name = ['sale.order',]
+    _model_name = ['cdiscount.sale.order',]
 
     def _must_skip(self):
         if self.binder.to_openerp(self.cdiscount_id):
@@ -63,8 +334,9 @@ class CdiscountSaleOrderImporter(Importer):
 
     def _get_data(self, attachment_id):
         attachment = self.env['ir.attachment'].browse( attachment_id)
-        _logger.info(attachment.datas)
-        return json.loads(attachment.datas)
+        _logger.info((attachment.datas).decode('base64'))
+        data_decoded = (attachment.datas).decode('base64')
+        return json.loads(data_decoded)
 
     def _import_dependency(self):
         # TODO importer les partenaires..*[]:
@@ -73,6 +345,7 @@ class CdiscountSaleOrderImporter(Importer):
     def _create_data(self):
         """mapper le record en h odoo """
         data = self.cdiscount_record
+        return data
 
     def _map_data(self):
         """ Returns an instance of
@@ -81,22 +354,70 @@ class CdiscountSaleOrderImporter(Importer):
         """
         return self.mapper.map_record(self.cdiscount_record)
 
+    def _import_dependencies(self, cdiscount_id, binding_model,
+                           importer_class=None, always=False):
+        """ Import a dependency.
+
+        The importer class is a class or subclass of
+        :class:`Importer`. A specific class can be defined.
+
+        :param cdiscount_id: id of the related binding to import
+        :param binding_model: name of the binding model for the relation
+        :type binding_model: str | unicode
+        :param importer_cls: :class:`openerp.addons.connector.\
+                                     connector.ConnectorUnit`
+                             class or parent class to use for the export.
+                             By default: CdiscountImporter
+        :type importer_cls: :class:`openerp.addons.connector.\
+                                    connector.MetaConnectorUnit`
+        :param always: if True, the record is updated even if it already
+                       exists, note that it is still skipped if it has
+                       not been modified on Cdiscount since the last
+                       update. When False, it will import it only when
+                       it does not yet exist.
+        :type always: boolean
+        """
+        if not cdiscount_id:
+            return
+        if importer_class is None:
+            importer_class = Importer
+            binder = self.binder_for(binding_model)
+        if always or binder.to_openerp(cdiscount_id) is None:
+            importer = self.unit_for(importer_class, model=binding_model)
+            importer.run(cdiscount_id)
+
+    def _get_binding(self):
+        return self.binder.to_openerp(self.cdiscount_id, browse=True)
+
     def run(self, attachment_id, force=False):
         """ Run the synchronization
         """
         self.cdiscount_record = self._get_data(attachment_id)
-        self.cdiscount_id = self.cdiscount_record['OrderId']
+
+        _logger.info("keys cdiscount record: %s",self.cdiscount_record.keys())
+
+        self.cdiscount_id = self.cdiscount_record['OrderNumber']
+        _logger.info("Order Number: %s", self.cdiscount_id)
+
+      #  self._import_dependencies(self.cdiscount_id,'cdiscount.sale.order')
+        #
+        # import pdb
+        # pdb.set_trace()
+
         skip = self._must_skip()
         if skip:
             return skip
 
         binding = self._get_binding()
 
-        self._import_dependencies()
 
         map_record = self._map_data()
 
-        record = self._create_data(map_record)
+      #  import pdb
+      #  pdb.set_trace()
+
+        record = self._create_data()
+
         binding = self._create(record)
 
         self.binder.bind(self.cdiscount_id, binding)
@@ -105,7 +426,7 @@ class CdiscountSaleOrderImporter(Importer):
 @job
 def import_record_sale_order(session, model, att_id,backend_id ):
     "Sale Imported from Cdiscount to validate it in Quotations "
-    env = get_environment(session, 'sale.order', backend_id)
+    env = get_environment(session, 'cdiscount.sale.order', backend_id)
     importer = env.get_connector_unit(CdiscountSaleOrderImporter)
     importer.run(att_id)
 

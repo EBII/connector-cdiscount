@@ -6,4 +6,6 @@
 
 from . import adapter
 from . import tools
+from . import binder
+
 

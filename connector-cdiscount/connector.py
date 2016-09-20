@@ -32,6 +32,7 @@ class CdiscountBinding(models.AbstractModel):
 #     cdiscount_id = fields.Char(string='ID on Cdiscount')
 #
 
+
 class CdiscountSaleOrder(models.Model):
     _name = 'cdiscount.sale.order'
     _inherit = 'cdiscount.binding'

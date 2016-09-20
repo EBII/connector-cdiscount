@@ -19,7 +19,7 @@
            Features:
                     WORK in Progress
            """ ,
-    'depends': ['connector'],
+    'depends': ['connector','sale'],
     'data': [   'views/connector_cdiscount_view.xml',
                 'views/connector_cdiscount_menu.xml',
              ],
