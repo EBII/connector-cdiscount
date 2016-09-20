@@ -1,44 +1,44 @@
 Order
-['CreationDate']
-['Customer']
-['HasClaims']
-['InitialTotalAmount']
-['InitialTotalShippingChargesAmount']
-['OrderNumber']
-['OrderState']
-['OrderLineList']
+        CreationDate
+        Customer
+        HasClaims
+        InitialTotalAmount
+        InitialTotalShippingChargesAmount
+        OrderNumber
+        OrderState
+        OrderLineList
 
 
 print "billing adress"
 
-['City']
-['Civility']
-['Country']
-['FirstName']
-['LastName']
-['Street']
-['ZipCode']
+        City
+        Civility
+        Country
+        FirstName
+        LastName
+        Street
+        ZipCode
 
 "shipping addresse: "
-['City']
-['Civility']
-['Country']
-['FirstName']
-['LastName']
-['Street']
-['ZipCode']
+        City
+        Civility
+        Country
+        FirstName
+        LastName
+        Street
+        ZipCode
 
 " OrderLine"
 
-['CategoryCode']
-['HasClaim']
-['Name']
-['OrderLineChildList']
-['ProductEan']
-['ProductId']
-['PurchasePrice']
-['Quantity']
-['RowId']
-['SellerProductId']
-['Sku']
-['SkuParent']
+        CategoryCode
+        HasClaim
+        Name
+        OrderLineChildList
+        ProductEan
+        ProductId
+        PurchasePrice
+        Quantity
+        RowId
+        SellerProductId
+        Sku
+        SkuParent

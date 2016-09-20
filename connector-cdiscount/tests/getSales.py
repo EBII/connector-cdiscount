@@ -6,8 +6,7 @@ import xmltodict as xd
 import json
 # message = "[USAGE] getSales.py <username> <password> N \
 #            N=0 preprod N=1 prod "
-# username = ''
-# password = ''
+
 # mode = 0
 # if len(sys.argv) == 4:
 #     username = sys.argv[1]
