@@ -26,6 +26,7 @@ class CdiscountModelBinder(CdiscountBinder):
     _model_name = [
         'cdiscount.sale.order',
         'cdiscount.sale.order.line',
+        'cdiscount.res.partner'
     ]
 
     def to_openerp(self, external_id, unwrap=False, browse=False):

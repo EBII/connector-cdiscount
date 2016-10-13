@@ -19,11 +19,11 @@
            Features:
                     WORK in Progress
            """ ,
-    'depends': ['connector','sale'],
+    'depends': ['connector','sale','connector_ecommerce'],
     'data': [   'views/connector_cdiscount_view.xml',
                 'views/connector_cdiscount_menu.xml',
              ],
-    'demo': ['demo/cdiscount.backend.xml'],
+    'demo': ['demo/cdiscount-backend.xml'],
     'installable': True,
     'application': True,
 }
