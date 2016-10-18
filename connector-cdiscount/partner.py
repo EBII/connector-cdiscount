@@ -8,10 +8,27 @@ from openerp.addons.connector.unit.mapper import (mapping,
 from openerp.addons.connector.exception import MappingError
 
 class CdiscountResPartner(models.Model):
-    _name='cdiscount.res.partner'
-    _inherit = 'res.partner'
+    _name = 'cdiscount.res.partner'
+    _inherit = 'cdiscount.binding'
+    _inherits = {'res.partner': 'openerp_id'}
+    _description = 'Cdiscount Partner'
 
-    cdis_Id = fields.Char("id cdiscount")
+    _rec_name = 'name'
+
+    openerp_id = fields.Many2one(comodel_name='res.partner',
+                                 string='Partner',
+                                 required=True,
+                                 ondelete='cascade')
+    backend_id = fields.Many2one(
+        comodel_name='cdiscount.backend',
+        string='Cdiscount Backend',
+        store=True,
+        readonly=True,
+        # override 'cdiscount.binding', can't be INSERTed if True:
+        required=False,
+    )
+
+    cdis_Id = fields.Char("Cdiscount customer Id")
 
 
 @cdiscount
@@ -56,11 +73,11 @@ class PartnerImportMapper(ImportMapper):
         # the same backend)
         return {'category_id': [(4, category_id)]}
 
-    @mapping
-    def website_id(self, record):
-        binder = self.binder_for(model='cdiscount.website')
-        website_id = binder.to_openerp(record['website_id'])
-        return {'website_id': website_id}
+    # @mapping
+    # def website_id(self, record):
+    #     binder = self.binder_for(model='cdiscount.website')
+    #     website_id = binder.to_openerp(record['website_id'])
+    #     return {'website_id': website_id}
 
     #@only_create
     @mapping

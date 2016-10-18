@@ -41,7 +41,7 @@ class CdiscountModelBinder(CdiscountBinder):
         :rtype: recordset
         """
         bindings = self.model.with_context(active_test=False).search(
-            [('cdiscount_id', '=', str(external_id)),
+            [('cdis_Id', '=', str(external_id)),
              ('backend_id', '=', self.backend_record.id)]
         )
         if not bindings:

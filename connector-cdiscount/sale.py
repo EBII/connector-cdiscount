@@ -215,6 +215,7 @@ class SaleOrderImportMapper(ImportMapper):
     @mapping
     def customer_id(self, record):
         binder = self.binder_for('cdiscount.res.partner')
+
         partner_id = binder.to_openerp(record['Customer']['CustomerId'], unwrap=True)
         assert partner_id is not None, (
             "customer_id %s should have been imported in "
@@ -240,7 +241,7 @@ class SaleOrderImportMapper(ImportMapper):
     #         return
     #
     #     carrier = self.env['delivery.carrier'].search(
-    #         [('cdiscount_code', '=', ifield)],
+    #         [g('cdiscount_code', '=', ifield)],
     #         limit=1,
     #     )
     #     if carrier:
@@ -377,6 +378,7 @@ class CdiscountSaleOrderImporter(Importer):
 
         if len(pids) != 1 : # voir avec la classe bind #TODO
             # updatde
+            _logger.info("need update partner")
             pass
         else:
             self.partner = create_partner(record['Customer'])
@@ -384,11 +386,10 @@ class CdiscountSaleOrderImporter(Importer):
         self.billing = create_partner(record['BillingAddress'], self.partner)
         self.shipping = create_partner(record['ShippingAddress'], self.partner)
 
-
         return
 
     def _get_binding(self):
-        _logger.info("get binding")
+        _logger.info("get binding 391")
         return self.binder.to_openerp(self.cdiscount_id, browse=True)
 
     def _create(self, record):
