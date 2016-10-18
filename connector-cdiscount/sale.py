@@ -396,6 +396,7 @@ class CdiscountSaleOrderImporter(Importer):
 
         _logger.info("Methode create %s" ,str(record))
 
+
     def run(self, attachment_id, force=False):
         """ Run the synchronization
         """
