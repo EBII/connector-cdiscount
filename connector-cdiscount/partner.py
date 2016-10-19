@@ -28,8 +28,7 @@ class CdiscountResPartner(models.Model):
         required=False,
     )
 
-    cdis_Id = fields.Char("Cdiscount customer Id")
-
+    customer_id = fields.Char("cdicount_customer_id")
 
 @cdiscount
 class PartnerImportMapper(ImportMapper):

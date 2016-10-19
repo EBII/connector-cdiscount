@@ -215,12 +215,13 @@ class SaleOrderImportMapper(ImportMapper):
     @mapping
     def customer_id(self, record):
         binder = self.binder_for('cdiscount.res.partner')
-
+        import pdb
+        pdb.set_trace()
         partner_id = binder.to_openerp(record['Customer']['CustomerId'], unwrap=True)
         assert partner_id is not None, (
             "customer_id %s should have been imported in "
-            "SaleOrderImporter._import_dependencies" % record['Customer']['CustomerId'])
-        return {'partner_id': partner_id}
+            "SaleOrderImporter._import_dependencies " % record['Customer']['CustomerId'])
+        return {'customer_id': partner_id}
 
     # @mapping
     # def payment(self, record):
@@ -363,7 +364,7 @@ class CdiscountSaleOrderImporter(Importer):
 
     def _import_addresses(self):
 
-        partner_mapper = self.unit_for(ImportMapper, model='cdiscount.res.partner') #(TODO creer la classe en questionn)
+        partner_mapper = self.unit_for(ImportMapper, model='cdiscount.res.partner')
 
         def create_partner(partner_record, parent_partner=None):
 
@@ -373,15 +374,16 @@ class CdiscountSaleOrderImporter(Importer):
             return self.env['res.partner'].create(data)
 
         record = self.record
-        client_id = record['Customer']['CustomerId']
-        pids = self.env['res.partner'].search([('cdis_Id', 'ilike', client_id), ('type', 'ilike', 'default')])
-
+        customer_id = record['Customer']['CustomerId']
+        pids = self.env['cdiscount.res.partner'].search([('customer_id', 'ilike', customer_id), ('type', 'ilike', 'default')])
+        # import pdb
+        # pdb.set_trace()
         if len(pids) != 1 : # voir avec la classe bind #TODO
-            # updatde
-            _logger.info("need update partner")
+            self.partner = create_partner(record['Customer'])
             pass
         else:
-            self.partner = create_partner(record['Customer'])
+            # updatde
+            _logger.info("need update partner")
 
         self.billing = create_partner(record['BillingAddress'], self.partner)
         self.shipping = create_partner(record['ShippingAddress'], self.partner)
@@ -401,16 +403,12 @@ class CdiscountSaleOrderImporter(Importer):
         """ Run the synchronization
         """
         self.cdiscount_record = self._get_data(attachment_id)
+        self.record = self._get_data(attachment_id)
 
         _logger.info("keys cdiscount record: %s",self.cdiscount_record.keys())
 
         self.cdiscount_id = self.cdiscount_record['OrderNumber']
         _logger.info("Order Number: %s" % self.cdiscount_id)
-
-      #  self._import_dependencies(self.cdiscount_id,'cdiscount.sale.order')
-        #
-        # import pdb
-        # pdb.set_trace()
 
         skip = self._must_skip()
         if skip:
@@ -418,10 +416,14 @@ class CdiscountSaleOrderImporter(Importer):
 
         map_record = self._map_data()
 
+        # import pdb
+        # pdb.set_trace()
+
+        self._import_dependencies()
 
         record = self._create_data(map_record)
-        #import pdb
-        #pdb.set_trace()
+
+
 
         binding = self._create(record)
 
