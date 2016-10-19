@@ -41,6 +41,16 @@ from cStringIO import StringIO
 _logger = logging.getLogger(__name__)
 
 
+class SaleOrder(models.Model):
+    _inherit = 'sale.order'
+
+    cdiscount_bind_ids = fields.One2many(
+        comodel_name='cdiscount.sale.order',
+        inverse_name='openerp_id',
+        string="Cdiscount Bindings",
+    )
+
+
 class CdiscountSaleOrder(models.Model):
     _name = 'cdiscount.sale.order'
     _inherit = 'cdiscount.binding'
@@ -67,15 +77,6 @@ class CdiscountSaleOrder(models.Model):
     cdiscount_order_id = fields.Integer(string='Cdiscount Order ID',
                                       help="'order_id' field in Cdiscount")
 
-
-class SaleOrder(models.Model):
-    _inherit = 'sale.order'
-
-    cdiscount_bind_ids = fields.One2many(
-        comodel_name='cdiscount.sale.order',
-        inverse_name='openerp_id',
-        string="Cdiscount Bindings",
-    )
 
 class CdiscountSaleOrderLine(models.Model):
     _name = 'cdiscount.sale.order.line'
@@ -204,6 +205,7 @@ class SaleOrderImportMapper(ImportMapper):
     #     onchange = self.unit_for(SaleOrderOnChange)
     #     return onchange.play(values, values['cdiscount_order_line_ids'])
     #
+
     @mapping
     def name(self, record):
         name = record['OrderNumber']
@@ -215,8 +217,7 @@ class SaleOrderImportMapper(ImportMapper):
     @mapping
     def customer_id(self, record):
         binder = self.binder_for('cdiscount.res.partner')
-        import pdb
-        pdb.set_trace()
+
         partner_id = binder.to_openerp(record['Customer']['CustomerId'], unwrap=True)
         assert partner_id is not None, (
             "customer_id %s should have been imported in "
@@ -372,6 +373,10 @@ class CdiscountSaleOrderImporter(Importer):
             data = map_record.values(for_create=True,
                                   parent_partner=parent_partner)
             return self.env['res.partner'].create(data)
+
+        def update_partner(partner_record, partner_id=None):
+
+            pass
 
         record = self.record
         customer_id = record['Customer']['CustomerId']

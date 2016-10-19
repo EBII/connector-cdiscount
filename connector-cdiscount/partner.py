@@ -7,6 +7,17 @@ from openerp.addons.connector.unit.mapper import (mapping,
                                                   )
 from openerp.addons.connector.exception import MappingError
 
+_logger = logging.getLogger(__name__)
+
+class ResPartner(models.Model):
+    _inherit = 'res.partner'
+
+    cdiscount_bind_ids = fields.One2many(
+        comodel_name='cdiscount.res.partner',
+        inverse_name='openerp_id',
+        string="Cdiscount Bindings",
+    )
+
 class CdiscountResPartner(models.Model):
     _name = 'cdiscount.res.partner'
     _inherit = 'cdiscount.binding'
@@ -60,17 +71,16 @@ class PartnerImportMapper(ImportMapper):
     @mapping
     def customer_group_id(self, record):
         # import customer groups
-        binder = self.binder_for(model='cdiscount.res.partner.category')
-        category_id = binder.to_openerp(record['group_id'], unwrap=True)
+        category = self.env["res.partner.category"].search([('name','ilike','Prospect')])
 
-        if category_id is None:
+        if category is None:
             raise MappingError("The partner category with "
                                "cdiscount id %s does not exist" %
                                record['group_id'])
 
         # FIXME: should remove the previous tag (all the other tags from
         # the same backend)
-        return {'category_id': [(4, category_id)]}
+        return {'category_id': [(3, category.id)]}
 
     # @mapping
     # def website_id(self, record):
@@ -79,23 +89,22 @@ class PartnerImportMapper(ImportMapper):
     #     return {'website_id': website_id}
 
     #@only_create
-    @mapping
-    def company_id(self, record):
-        binder = self.binder_for(model='cdiscount.storeview')
-        storeview = binder.to_openerp(record['store_id'], browse=True)
-        if storeview:
-            company = storeview.backend_id.company_id
-            if company:
-                return {'company_id': company.id}
-        return {'company_id': False}
+    # @mapping
+    # def company_id(self, record):
+    #     self.env["res.company"].search()
+    #     if storeview:
+    #         company = storeview.backend_id.company_id
+    #         if company:
+    #             return {'company_id': company.id}
+    #     return {'company_id': False}
 
     @mapping
     def lang(self, record):
-        binder = self.binder_for(model='cdiscount.storeview')
-        storeview = binder.to_openerp(record['store_id'], browse=True)
-        if storeview:
-            if storeview.lang_id:
-                return {'lang': storeview.lang_id.code}
+        lang= self.env["res.lang"].search([('code', 'ilike', 'fr_FR' )])
+        if lang:
+            return {'lang': ''}
+        else:
+            return {'lang': 1}
 
     #@only_create
     @mapping
@@ -110,16 +119,18 @@ class PartnerImportMapper(ImportMapper):
     @mapping
     def openerp_id(self, record):
         """ Will bind the customer on a existing partner
-        with the same email """
-        partner = self.env['res.partner'].search(
-            [('email', '=', record['email']),
-             ('customer', '=', True),
-             '|',
-             ('is_company', '=', True),
-             ('parent_id', '=', False)],
-            limit=1,
-        )
-        if partner:
-            return {'openerp_id': partner.id}
-
+        with the same customer_id """
+        _logger.info("record : %s",record)
+        if "CustomerId" in record:
+            partner = self.env['cdiscount.res.partner'].search(
+                [('customer_id', '=', record["CustomerId"])],
+                limit=1,
+            )
+            if partner:
+                return {'openerp_id': partner.id}
+        else:
+            partner = self.env['cdiscount.res.partner'].search(
+                [('parent_id', '=', self.parent_partner.id)])
+            if partner:
+                return {'openerp_id': partner.id}
 
