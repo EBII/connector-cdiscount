@@ -45,12 +45,11 @@ class CdiscountResPartner(models.Model):
 class PartnerImportMapper(ImportMapper):
     _model_name = 'cdiscount.res.partner'
     direct = [
-        ('title', 'Civility'),
-        ('mobile', 'MobilePhone'),
-        ('cdis_Id', 'CustomerId'),
-        ('street', 'Street'),
-        ('zip', 'ZipCode'),
-        ('city', 'City'),
+        ('MobilePhone','mobile'),
+        ('Street','street'),
+        ('ZipCode', 'zip'),
+        ( 'City', 'city'),
+       # ( 'CustomerId','openerp_id'),
 
     ]
 
@@ -98,18 +97,26 @@ class PartnerImportMapper(ImportMapper):
     #             return {'company_id': company.id}
     #     return {'company_id': False}
 
-    @mapping
-    def lang(self, record):
-        lang= self.env["res.lang"].search([('code', 'ilike', 'fr_FR' )])
-        if lang:
-            return {'lang': ''}
-        else:
-            return {'lang': 1}
+    # @mapping
+    # def lang(self, record):
+    #     lang= self.env["res.lang"].search([('code', 'ilike', 'fr_FR' )])
+    #     if lang:
+    #         return {'lang': lang }
+    #     else:
+    #         return {'lang': 1}
 
     #@only_create
     @mapping
     def customer(self, record):
         return {'customer': True}
+
+    @mapping
+    def title(self,record):
+        _logger.info("partner record %s", record )
+        _logger.info("partner Civility %s", record['Civility'] )
+        title = self.env['res.partner.title'].search([('name','=',record['Civility'])])
+        _logger.info("la civilité est : %s" ,title)
+        return {'title': title}
 
     @mapping
     def type(self, record):
@@ -121,6 +128,8 @@ class PartnerImportMapper(ImportMapper):
         """ Will bind the customer on a existing partner
         with the same customer_id """
         _logger.info("record : %s",record)
+        _logger.info("partner id : %s", self.options.parent_partner)
+
         if "CustomerId" in record:
             partner = self.env['cdiscount.res.partner'].search(
                 [('customer_id', '=', record["CustomerId"])],
@@ -130,7 +139,7 @@ class PartnerImportMapper(ImportMapper):
                 return {'openerp_id': partner.id}
         else:
             partner = self.env['cdiscount.res.partner'].search(
-                [('parent_id', '=', self.parent_partner.id)])
+                [('parent_id', '=', self.options.parent_partner.id)])
             if partner:
                 return {'openerp_id': partner.id}
 

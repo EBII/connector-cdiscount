@@ -217,8 +217,9 @@ class SaleOrderImportMapper(ImportMapper):
     @mapping
     def customer_id(self, record):
         binder = self.binder_for('cdiscount.res.partner')
+        partner_id = binder.to_openerp(record['Customer']['CustomerId'], unwrap=True, browse=True)
+        _logger.info("caca: %s",partner_id)
 
-        partner_id = binder.to_openerp(record['Customer']['CustomerId'], unwrap=True)
         assert partner_id is not None, (
             "customer_id %s should have been imported in "
             "SaleOrderImporter._import_dependencies " % record['Customer']['CustomerId'])
@@ -375,17 +376,16 @@ class CdiscountSaleOrderImporter(Importer):
             return self.env['res.partner'].create(data)
 
         def update_partner(partner_record, partner_id=None):
-
+            #TODO update partner
             pass
 
         record = self.record
         customer_id = record['Customer']['CustomerId']
         pids = self.env['cdiscount.res.partner'].search([('customer_id', 'ilike', customer_id), ('type', 'ilike', 'default')])
-        # import pdb
-        # pdb.set_trace()
+
         if len(pids) != 1 : # voir avec la classe bind #TODO
             self.partner = create_partner(record['Customer'])
-            pass
+
         else:
             # updatde
             _logger.info("need update partner")
